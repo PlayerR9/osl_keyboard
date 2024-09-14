@@ -1,0 +1,1 @@
+- Check whether maintaining spaces as not significant or not.
