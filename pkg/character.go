@@ -2,7 +2,6 @@ package pkg
 
 import (
 	gcers "github.com/PlayerR9/go-commons/errors"
-	gcint "github.com/PlayerR9/go-commons/ints"
 	dba "github.com/PlayerR9/go-debug/assert"
 )
 
@@ -43,7 +42,7 @@ func NewCharacter(description *CharacterDescription, var_idx int) (*Character, e
 	size := description.VariantSize()
 
 	if var_idx < 0 || var_idx >= size {
-		return nil, gcers.NewErrInvalidParameter("var_idx", gcint.NewErrOutOfBounds(var_idx, 0, size))
+		return nil, gcers.NewErrInvalidParameter("var_idx", gcers.NewErrOutOfBounds(var_idx, 0, size))
 	}
 
 	return &Character{
@@ -103,7 +102,7 @@ func (c *Character) SetVariant(var_idx int) error {
 	}
 
 	if var_idx < 0 || var_idx >= c.description.VariantSize() {
-		return gcers.NewErrInvalidParameter("varIndex", gcint.NewErrOutOfBounds(var_idx, 0, c.description.VariantSize()))
+		return gcers.NewErrInvalidParameter("varIndex", gcers.NewErrOutOfBounds(var_idx, 0, c.description.VariantSize()))
 	}
 
 	c.var_idx = var_idx

@@ -1,11 +1,5 @@
 package pkg
 
-import (
-	"bytes"
-
-	gcch "github.com/PlayerR9/go-commons/runes"
-)
-
 // character_table is a table of all character descriptions.
 var character_table []*CharacterDescription
 
@@ -40,7 +34,7 @@ func init() {
 	character_table = append(character_table, new_character_description("l", CT_Coda, CQ_Narrow, '\uE039', '\uE03E'))
 
 	// Extras
-	character_table = append(character_table, new_character_description(".", CT_Extra, CQ_Narrow, '\uE034'))
+	character_table = append(character_table, new_character_description(".", CT_Extra, CQ_Narrow, '\uE034')) // duplicate: fix this
 
 	// Tone markers
 	character_table = append(character_table, new_character_description("\\m", CT_Extra, CQ_Narrow, '\uE04C'))
@@ -67,47 +61,20 @@ func Alphabet() [][]rune {
 	return alphabet
 }
 
-// ExtractFirstToken extracts the first token from the input bytes.
+// DescriptionFromRomanization returns the description of a character from its romanization.
 //
 // Parameters:
-//   - input: the input bytes.
+//   - romanization: the romanization of the character.
 //
 // Returns:
-//   - []*CharacterDescription: the first token extracted from the input bytes.
-//   - error: an error if the input is invalid.
-func ExtractFirstToken(input []byte) ([]*CharacterDescription, error) {
-	var solutions []*CharacterDescription
-
-	// check if the input has a character at the beginning of the string by adding to the solutions the index of the longest match
-	// if there are multiple matches of the same length, add all of them
-	var y []rune
-
-	maxIndex := -1
-
-	for i, char := range character_table {
-		// convert the character to utf8
-		x, err := gcch.StringToUtf8(char.Romanization)
-		if err != nil {
-			return nil, err
-		}
-
-		// check if the input starts with the character
-		if !bytes.HasPrefix(input, []byte(char.Romanization)) {
-			continue
-		}
-
-		// check if the character is longer than the previous one or if it is the first one
-		// if it is, change the max_index
-		if maxIndex == -1 || len(x) > len(y) {
-			maxIndex = i
-			y = x
-
-			// reset the solutions
-			solutions = []*CharacterDescription{char}
-		} else if len(x) == len(y) { // if the character is the same length as the previous one, add it to the solutions
-			solutions = append(solutions, char)
+//   - *CharacterDescription: the description of the character.
+//   - bool: true if the character was found, false otherwise.
+func DescriptionFromRomanization(romanization string) (*CharacterDescription, bool) {
+	for _, char := range character_table {
+		if char.Romanization == romanization {
+			return char, true
 		}
 	}
 
-	return solutions, nil
+	return nil, false
 }

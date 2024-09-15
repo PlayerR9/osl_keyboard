@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/PlayerR9/osl_keyword/pkg"
+	"github.com/PlayerR9/osl_keyboard/pkg"
 )
 
 func main() {

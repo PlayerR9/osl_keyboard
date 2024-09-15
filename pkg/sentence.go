@@ -1,11 +1,11 @@
 package pkg
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 
-	gcslc "github.com/PlayerR9/go-commons/slices"
+	dba "github.com/PlayerR9/go-debug/assert"
+	prx "github.com/PlayerR9/osl_keyboard/pkg/parsing"
 )
 
 // SentenceString returns the romanized sentence.
@@ -135,74 +135,39 @@ func FinalTweaks(s []*Syllable) {
 //   - *Sentence: the romanized sentence.
 //   - error: nil if the sentence is valid, an error otherwise.
 func Tokenize(data []byte) ([]*Syllable, error) {
-	var tokens []*Syllable
+	tokens, err := prx.FullLex(data)
+	if err != nil {
+		return nil, err
+	}
 
-	syllable := NewSyllable()
+	var syllables []*Syllable
+
+	var builder SyllableBuilder
 
 	var prev *Character = nil
 
-	for len(data) > 0 {
-		// Remove leading and trailing spaces
-		data = bytes.TrimSpace(data)
-
-		// If the syllable is full, add it to the tokens
-		if syllable.Size() == 3 {
-			tokens = append(tokens, syllable)
-
-			syllable = NewSyllable()
+	for i := 0; i < len(tokens)-1; i++ {
+		// 1. If the syllable is "full", then add it to the list of syllables.
+		if builder.Size() == 3 {
+			syllables = append(syllables, builder.Build())
+			builder.Reset()
 		}
 
-		// Extract the first token
-		solutions, err := ExtractFirstToken(data)
-		if err != nil {
-			return nil, err
+		// TODO: Handle the newline character
+
+		// 2. Ensure that is not an invalid combination.
+		sol, ok := DescriptionFromRomanization(tokens[i].Data)
+		dba.AssertOk(ok, "DescriptionFromRomanization(%q)", tokens[i].Data)
+
+		if sol.Type == CT_Coda && !builder.modifierMatch(prev) && !builder.helperMatch(prev) {
+			return nil, fmt.Errorf("unmatched coda")
 		}
 
-		// Debugging
-		// Debugger.Println("N* of solutions:", len(solutions))
-		//
-		// for _, solution := range solutions {
-		// 	Debugger.Println(solution.GetRomanization())
-		// }
-		// Debugger.Println()
-
-		// Remove invalid tokens
-		filterInvalidTokens := func(cd *CharacterDescription) bool {
-			return cd.Type != CT_Coda ||
-				modifierMatch(syllable, prev) ||
-				helperMatch(syllable, prev)
-		}
-
-		solutions = gcslc.SliceFilter(solutions, filterInvalidTokens)
-
-		// If no token was found, return an error
-		if len(solutions) == 0 {
-			// Debugger.Println("Syllables Done:")
-			// Debugger.Println(tokens.String())
-			//
-			// Debugger.Println("Syllable in progress:")
-			// Debugger.Print(syllable.RomanizedString())
-			//
-			// Debugger.Println()
-			//
-			// Debugger.Println("Remaining line:", line)
-
-			return nil, fmt.Errorf("no token found in line: %s", data)
-		}
-
-		// matches
-		if len(solutions) > 1 {
-			panic(fmt.Sprintf("more than one match found for %s on characterSpace", data))
-		}
-
-		rom := solutions[0].Romanization
-		data = data[len(rom):]
-
-		c_type := solutions[0].Type
+		c_type := sol.Type
 
 		switch c_type {
 		case CT_Vowel:
-			new_vowel, err := NewCharacter(solutions[0], 1)
+			new_vowel, err := NewCharacter(sol, 1)
 			if err != nil {
 				return nil, err
 			}
@@ -213,9 +178,9 @@ func Tokenize(data []byte) ([]*Syllable, error) {
 
 			prev = new_vowel
 
-			syllable.Append(new_vowel)
+			builder.Append(new_vowel)
 		case CT_Consonant:
-			new_consonant, err := NewCharacter(solutions[0], 1)
+			new_consonant, err := NewCharacter(sol, 1)
 			if err != nil {
 				return nil, err
 			}
@@ -226,71 +191,66 @@ func Tokenize(data []byte) ([]*Syllable, error) {
 
 			prev = new_consonant
 
-			if syllable.Size() != 0 {
-				tokens = append(tokens, syllable)
-
-				syllable = NewSyllable()
+			if builder.Size() != 0 {
+				syllables = append(syllables, builder.Build())
+				builder.Reset()
 			}
 
-			syllable.Append(new_consonant)
+			builder.Append(new_consonant)
 		case CT_Coda:
-			new_modifier, err := NewCharacter(solutions[0], 0)
+			new_modifier, err := NewCharacter(sol, 0)
 			if err != nil {
 				return nil, err
 			}
 
 			prev = new_modifier
 
-			syllable.Append(new_modifier)
+			builder.Append(new_modifier)
 		case CT_Extra:
 			prev = nil
 
-			if syllable.Size() != 0 {
-				tokens = append(tokens, syllable)
-
-				syllable = NewSyllable()
+			if builder.Size() != 0 {
+				syllables = append(syllables, builder.Build())
+				builder.Reset()
 			}
 
-			c, err := NewCharacter(solutions[0], 0)
+			c, err := NewCharacter(sol, 0)
 			if err != nil {
 				return nil, err
 			}
 
-			syllable.Append(c)
+			builder.Append(c)
 
-			tokens = append(tokens, syllable)
-
-			syllable = NewSyllable()
+			syllables = append(syllables, builder.Build())
+			builder.Reset()
 		case CT_Helper:
 			prev = nil
 
-			if syllable.Size() != 0 {
-				tokens = append(tokens, syllable)
-
-				syllable = NewSyllable()
+			if builder.Size() != 0 {
+				syllables = append(syllables, builder.Build())
+				builder.Reset()
 			}
 
-			if solutions[0].Romanization != "|" {
-				c, err := NewCharacter(solutions[0], 0)
+			if sol.Romanization != "|" {
+				c, err := NewCharacter(sol, 0)
 				if err != nil {
 					return nil, err
 				}
 
-				syllable.Append(c)
+				builder.Append(c)
 
-				tokens = append(tokens, syllable)
-
-				syllable = NewSyllable()
+				syllables = append(syllables, builder.Build())
+				builder.Reset()
 			}
 		default:
-			panic(fmt.Sprintf("unknown character type: %d", c_type))
+			return nil, fmt.Errorf("unknown character type: %d", c_type)
 		}
 	}
 
 	// If there is a syllable in progress, add it to the tokens
-	if syllable.Size() != 0 {
-		tokens = append(tokens, syllable)
+	if builder.Size() != 0 {
+		syllables = append(syllables, builder.Build())
 	}
 
-	return tokens, nil
+	return syllables, nil
 }

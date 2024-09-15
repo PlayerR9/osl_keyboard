@@ -61,57 +61,6 @@ func (s *Syllable) Append(char *Character) {
 	s.chars = append(s.chars, char)
 }
 
-/*
-	private function modifierMatch matches to check if a modifier can be added to the current syllable.
-
-Parameters:
-
-	syllable: the current syllable
-	prev: the previous character
-
-Returns:
-
-	int: 0 if the modifier can be added to the current syllable, 1 if the modifier can't be added to the current syllable and must be added as a new syllable, -1 otherwise
-*/
-func modifierMatch(syllable *Syllable, prev *Character) bool {
-	// A modifier can't be the first character of a syllable
-	// A modifier can only be second or third character of a syllable (after a consonant)
-	if prev == nil || (syllable.Size() == 0 || syllable.Size() > 2) {
-		return false
-	}
-
-	// A modifier can only follow a vowel
-	if prev.GetType() != CT_Vowel {
-		return false
-	}
-
-	return true
-}
-
-/*
-	private function helperMatch matches to check if a helper character can be added to the current syllable.
-
-Parameters:
-
-	syllable: the current syllable
-	prev: the previous character
-
-Returns:
-
-	int: 0 if the helper character can be added to the current syllable, 1 if the helper character can't be added to the current syllable and must be added as a new syllable, -1 otherwise
-*/
-func helperMatch(syllable *Syllable, prev *Character) bool {
-	rom := syllable.chars[0].GetRomanization()
-
-	if rom != "|" && rom != "." {
-		return false
-	}
-
-	// TODO: Fix this
-
-	return true
-}
-
 func (s *Syllable) check_consonant_count() bool {
 	consonants := 0
 
